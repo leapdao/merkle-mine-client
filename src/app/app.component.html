@@ -1,14 +1,35 @@
 <div class="container-fluid">
-  <h2>
-    Merkle Mine Air Drop
-  </h2>
+  <h1>
+    Merkle Mine
+  </h1>
+  <div class="alert alert-info">
+    The MerkleMine will have a 3 month slow start period, in which all Ethereum accounts with greater than 0.1 ETH
+    as of block <<$$$>> will be eligible to generate their pro-rata portion of token. And then following the slow start period, all Ethereum accounts will
+    be able to MerkleMine until all initial token has been generated.
+  </div>
+
   <div class="input-group mb-3">
     <div class="input-group-prepend">
       <span class="input-group-text" id="basic-addon1">#</span>
     </div>
     <input type="text" class="form-control" [(ngModel)]="address" placeholder="Address" aria-label="Address" aria-describedby="basic-addon1">
   </div>
-  <button (click)="getProof(address)" class="btn btn-primary">Send</button>
+  <div class="alert alert-warning" role="alert" *ngIf="error">
+    {{ error }}
+    <span class="float-right" (click)="error = ''" style="cursor:pointer">X</span>
+  </div>
+  <div class="alert alert-info" role="alert" *ngIf="success">
+    {{ success }}
+  </div>
+
+  <div class="row">
+    <span class="align-middle" *ngIf="loading">Checking ... Please wait!</span>
+  </div>
+
+
+  <button *ngIf="!success" (click)="getProof(address)" class="btn btn-primary">Check</button>
+  <button *ngIf="success" (click)="claim(address)" class="btn btn-primary">Claim now</button>
+
 </div>
 
 
