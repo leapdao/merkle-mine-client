@@ -3,13 +3,9 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../environments/environment';
 import { abis } from '../abis';
 import { switchMap } from 'rxjs/operators';
-import { of } from 'rxjs/Observable/of';
-
-declare let Web3: any;
-
-declare global {
-  interface Window { web3: any; }
-}
+import Web3 from '../web3_workaround';
+import { ErrorObservable } from 'rxjs/observable/ErrorObservable';
+import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
 
 
 @Component({
@@ -29,47 +25,64 @@ export class AppComponent implements OnInit {
   protected loading: boolean;
 
   constructor(private http: HttpClient) {
-
+    // Observable.bind
   }
   ngOnInit() {
-    this.web3 = new Web3(window.web3.currentProvider);
-    const contract = this.web3.eth.contract(abis[0]);
-    this.merkleMine = contract.at(environment.contract_addresses[0]);
-    console.log(this.merkleMine);
+    this.web3 = new Web3(environment.eth_nodes[0]);
+    this.merkleMine = new this.web3.eth.Contract(abis[0], environment.contract_addresses[0]);
   }
 
   getProof(add: string) {
+    const address = add.toLocaleLowerCase();
+
+    const generatedObs = bindNodeCallback(cb => this.merkleMine.methods.generated(address).call(cb));
     if (!add) {
       this.error = 'Please enter a valid address';
       return;
     }
     this.loading = true;
     this.http.get(`${environment.base_url}${add}`)
-    .subscribe((v: any) => {
-      console.log(v);
-      if (v !== null) {
-        this.proof = v.proof;
-        this.merkleMine.generated(add.toLocaleLowerCase(), (error, claimed) => {
-          this.loading = false;
-          if (!claimed) {
-            this.error = 'Amount already claimed';
-          } else {
-            this.success = 'Congratulations! Your address has been found! Claim your tokens now!';
+      .pipe(
+        switchMap(
+          (v: any) => {
+            this.loading = false;
+            if (v !== null) {
+              this.proof = v.proof;
+              return generatedObs();
+            } else {
+              this.error = 'Sorry, Your address does not exist!';
+              return ErrorObservable.create(this.error);
+            }
           }
-        });
-      } else {
-        this.loading = false;
-        this.error = 'Sorry, Your address does not exist!';
+        ),
+      ).subscribe(v => {
+          this.success = 'Congratulations. Your address has been found! Claim your tokens now!';
+      }, e => {
+        // error
       }
-    });
+    );
   }
 
-  claim(addr) {
-    this.merkleMine.generate(addr.toLowerCase(), this.proof, (e, val) => {
-      const address = val;
-      this.merkleMine.Generate().watch({filter: { address }}, () => {
-        // event mined. user has been paid out;
-      });
-    });
+  async claim(addr) {
+    if (window.ethereum) {
+      await window.ethereum.enable();
+      const address = addr.toLowerCase();
+      const generateEventObs = bindNodeCallback(cb => this.merkleMine.events.Generate({filter: { address }}, cb));
+      const generateObs = bindNodeCallback(cb => this.merkleMine.methods.generate(address, this.proof).call(cb));
+      generateObs().pipe(
+        switchMap((e, txHash) => {
+          console.log(e, txHash);
+          return generateEventObs();
+        })
+      ).subscribe(
+        v => {
+          console.log(v);
+          alert('You have received tokens!');
+        },
+        e => {
+          console.log(e);
+        }
+      );
+    }
   }
 }

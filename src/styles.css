@@ -1,1 +1,8 @@
-/* You can add global styles to this file, and also import other style files */
+@import "~@angular/material/prebuilt-themes/indigo-pink.css";/* You can add global styles to this file, and also import other style files */
+
+
+.container {
+  padding-top: 5%;
+  padding-left: 15%;
+  padding-right: 15%;
+}
