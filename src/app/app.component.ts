@@ -1,4 +1,4 @@
-import { Component, OnInit, InjectionToken, Inject } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../environments/environment';
 import { abis } from '../abis';
@@ -6,7 +6,24 @@ import { switchMap } from 'rxjs/operators';
 import Web3 from '../web3_workaround';
 import { ErrorObservable } from 'rxjs/observable/ErrorObservable';
 import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
+import { FormBuilder, Validators, AbstractControl, FormControl, ValidatorFn } from '@angular/forms';
 
+declare global {
+  interface Window { ethereum: any; }
+}
+
+function ethAddressValidator(nameRe: RegExp): ValidatorFn {
+  return (control: AbstractControl): {[key: string]: any} | null => {
+    const address = control.value;
+    console.log(nameRe.test(address));
+    if (!nameRe.test(address)) {
+      // check if it has the basic requirements of an address
+      return { 'address': true };
+    }
+    // If it's all small caps or all all caps, return true
+    return null;
+  };
+}
 
 @Component({
   selector: 'app-root',
@@ -23,13 +40,21 @@ export class AppComponent implements OnInit {
   protected success: string;
   protected proof: any;
   protected loading: boolean;
+  protected addressForm;
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private fb: FormBuilder) {
     // Observable.bind
   }
   ngOnInit() {
     this.web3 = new Web3(environment.eth_nodes[0]);
     this.merkleMine = new this.web3.eth.Contract(abis[0], environment.contract_addresses[0]);
+
+    this.addressForm = this.fb.group({
+      address: new FormControl('', {
+        validators: [Validators.required, ethAddressValidator(/^(0x)?[0-9a-f]{40}$/i)],
+        updateOn: 'change',
+      }),
+    });
   }
 
   getProof(add: string) {
@@ -83,6 +108,8 @@ export class AppComponent implements OnInit {
           console.log(e);
         }
       );
+    } else {
+      // no metamask
     }
   }
 }

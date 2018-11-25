@@ -30,18 +30,26 @@
     as of block <<$$$>> will be eligible to generate their pro-rata portion of token. And then following the slow start period, all Ethereum accounts will
     be able to MerkleMine until all initial token has been generated.
   </section>
-  <mat-form-field>
-    <input matInput [(ngModel)]="address">
-  </mat-form-field>
+  <form [formGroup]="addressForm" (ngSubmit)="getProof(address)">
+    <mat-form-field>
+      <input matInput [(ngModel)]="address" [formGroup]="addressForm" formControlName="address">
+      <mat-error *ngIf="addressForm.controls.address.status === 'INVALID'">
+          Not a valid address!
+      </mat-error>
+    </mat-form-field>
+    <button *ngIf="!success"
+            type="submit"
+            mat-button
+            [disabled]="addressForm.status === 'INVALID'"
+            (click)="getProof(address)">Check Address</button>
+  </form>
 
-  <button *ngIf="!success" mat-button (click)="getProof(address)">Check Address</button>
   <mat-progress-spinner [strokeWidth]="5" [diameter]="25" *ngIf="loading" mode="indeterminate"></mat-progress-spinner>
   <button *ngIf="success"  mat-raised-button color="primary" (click)="claim(address)">Claim Now!</button>
 
   <section class="mat-typography">
     <div class="alert alert-warning" role="alert" *ngIf="error">
       {{ error }}
-      <span class="float-right" (click)="error = ''" style="cursor:pointer">X</span>
     </div>
     <div class="alert alert-info" role="alert" *ngIf="success">
       {{ success }}
